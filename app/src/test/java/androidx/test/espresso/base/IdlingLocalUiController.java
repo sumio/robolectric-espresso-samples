@@ -23,7 +23,6 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 
 import android.annotation.SuppressLint;
 import android.os.Build;
-import android.os.Debug;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -58,10 +57,10 @@ import javax.inject.Singleton;
 
 /** Implementation of {@link UiController}. */
 @Singleton
-final class UiControllerImpl
+final class IdlingLocalUiController
         implements InterruptableUiController, Handler.Callback, IdlingUiController {
 
-    private static final String TAG = UiControllerImpl.class.getSimpleName();
+    private static final String TAG = IdlingLocalUiController.class.getSimpleName();
 
     private static final Callable<Void> NO_OP =
             new Callable<Void>() {
@@ -160,7 +159,7 @@ final class UiControllerImpl
 
     @VisibleForTesting
     @Inject
-    UiControllerImpl(
+    IdlingLocalUiController(
             EventInjector eventInjector,
             @SdkAsyncTask IdleNotifier<Runnable> asyncIdle,
             @CompatAsyncTask IdleNotifier<Runnable> compatIdle,
@@ -522,7 +521,7 @@ final class UiControllerImpl
                     start + masterIdlePolicy.getIdleTimeoutUnit().toMillis(masterIdlePolicy.getIdleTimeout());
             interrogation = new MainThreadInterrogation(conditions, conditionSet, end);
 
-            InterrogationStatus result = Interrogator.loopAndInterrogate(interrogation);
+            InterrogationStatus result = PausedLooperInterrogator.loopAndInterrogate(interrogation);
             if (InterrogationStatus.COMPLETED == result) {
                 // did not time out, all conditions happy.
                 return dynamicIdle;
@@ -572,7 +571,7 @@ final class UiControllerImpl
     }
 
     private static final class MainThreadInterrogation
-            implements Interrogator.InterrogationHandler<InterrogationStatus> {
+            implements PausedLooperInterrogator.InterrogationHandler<InterrogationStatus> {
         private final EnumSet<IdleCondition> conditions;
         private final BitSet conditionSet;
         private final long giveUpAtMs;

@@ -31,9 +31,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /** Isolates the nasty details of touching the message queue. */
-final class Interrogator {
+final class PausedLooperInterrogator {
 
-    private static final String TAG = "Interrogator";
+    private static final String TAG = "PausedLooperInterrogator";
     private static final Method messageQueueNextMethod;
     private static final Field messageQueueHeadField;
     private static final Method recycleUncheckedMethod;
