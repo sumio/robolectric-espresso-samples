@@ -1,4 +1,10 @@
 /*
+ * This file is modified version of Interrogator.java.
+ * Interrogator.java was released by Android Open Source Project
+ * and available at https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/Interrogator.java
+ *
+ * Original copyright notice is as follows:
+ *
  * Copyright (C) 2014 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,19 +22,26 @@
 
 package androidx.test.espresso.base;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Throwables.throwIfUnchecked;
-
 import android.os.Binder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.MessageQueue;
 import android.os.SystemClock;
 import android.util.Log;
+
+import org.robolectric.shadow.api.Shadow;
+import org.robolectric.shadows.ShadowLooper;
+import org.robolectric.shadows.ShadowPausedMessageQueue;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.Duration;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.robolectric.Shadows.shadowOf;
 
 /** Isolates the nasty details of touching the message queue. */
 final class PausedLooperInterrogator {
@@ -137,16 +150,18 @@ final class PausedLooperInterrogator {
                 // run until the observer is no longer interested.
                 stillInterested = interrogateQueueState(q, handler);
                 if (stillInterested) {
-                    final Message m = getNextMessage();
+                    Duration nextScheduledTaskTime = shadowOf(Looper.myLooper()).getNextScheduledTaskTime();
                     // the observer cannot stop us from dispatching this message - but we need to let it know
                     // that we're about to dispatch.
-                    if (null == m) {
+                    if (nextScheduledTaskTime.equals(Duration.ZERO)) {
                         handler.quitting();
                         return handler.get();
                     }
                     stillInterested = handler.beforeTaskDispatch();
-                    m.getTarget().dispatchMessage(m);
-
+                    // we must advance both the system clock and the real clock.
+                    // idling resource will time out immediately unless the real clock is advanced.
+                    Thread.sleep(nextScheduledTaskTime.toMillis());
+                    shadowOf(Looper.myLooper()).runToNextTask();
                     // ensure looper invariants
                     final long newIdentity = Binder.clearCallingIdentity();
                     // Detect binder id corruption.
@@ -156,77 +171,17 @@ final class PausedLooperInterrogator {
                                 "Thread identity changed from 0x"
                                         + Long.toHexString(threadIdentity)
                                         + " to 0x"
-                                        + Long.toHexString(newIdentity)
-                                        + " while dispatching to "
-                                        + m.getTarget().getClass().getName()
-                                        + " "
-                                        + m.getCallback()
-                                        + " what="
-                                        + m.what);
+                                        + Long.toHexString(newIdentity));
                     }
-                    recycle(m);
                 }
             }
+        } catch (InterruptedException e) {
+            // ignore because no one interrupts me.
+            Log.wtf(TAG, "Thread.sleep() is interrupted");
         } finally {
             Binder.restoreCallingIdentity(entryIdentity);
             interrogating.set(Boolean.FALSE);
         }
-        return handler.get();
-    }
-
-    private static void recycle(Message m) {
-        if (recycleUncheckedMethod != null) {
-            try {
-                recycleUncheckedMethod.invoke(m);
-            } catch (IllegalAccessException | IllegalArgumentException | SecurityException e) {
-                throwIfUnchecked(e);
-                throw new RuntimeException(e);
-            } catch (InvocationTargetException ite) {
-                if (ite.getCause() != null) {
-                    throwIfUnchecked(ite.getCause());
-                    throw new RuntimeException(ite.getCause());
-                } else {
-                    throw new RuntimeException(ite);
-                }
-            }
-        } else {
-            m.recycle();
-        }
-    }
-
-    private static Message getNextMessage() {
-        try {
-            return (Message) messageQueueNextMethod.invoke(Looper.myQueue());
-        } catch (IllegalAccessException
-                | IllegalArgumentException
-                | InvocationTargetException
-                | SecurityException e) {
-            throwIfUnchecked(e);
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * Allows caller to see if the message queue is empty, has a task due soon / long, or has a
-     * barrier.
-     *
-     * <p>This method can be called from any thread. It has limitations though - if a task is
-     * currently being executed in the interrogation loop, you will not know about it. If the Looper
-     * is quitting you will not know about it. You can only see the state of the message queue - which
-     * is seperate from the state of the overall loop.
-     *
-     * @param q the message queue you wish to inspect
-     * @param handler a callback that will have one of the following methods invoked on it:
-     *     queueEmpty(), taskDueSoon(), taskDueLong() or barrierUp(). once and only once.
-     * @return the result of handler.get()
-     */
-    static <R> R peekAtQueueState(MessageQueue q, QueueInterrogationHandler<R> handler) {
-        checkNotNull(q);
-        checkNotNull(handler);
-        checkState(
-                !interrogateQueueState(q, handler),
-                "It is expected that %s would stop interrogation after a single peak at the queue.",
-                handler);
         return handler.get();
     }
 

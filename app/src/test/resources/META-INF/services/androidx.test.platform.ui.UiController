@@ -1,1 +1,1 @@
-org.robolectric.android.internal.LocalUiController
+androidx.test.espresso.base.IdlingLocalUiController

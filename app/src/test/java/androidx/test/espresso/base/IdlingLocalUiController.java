@@ -1,4 +1,13 @@
 /*
+ * This file is modified version of UiControllerImpl.java
+ * which is available at https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/UiControllerImpl.java
+ *
+ * provideDynamicNotifier() is copied from BaseLayerModule.java
+ * which is available at https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/BaseLayerModule.java
+ *
+ * UiControllerImpl.java and BaseLayerModule.java are released by The Android Open Source Project.
+ * Original copyright notice is as follows:
+ *
  * Copyright (C) 2014 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,51 +25,36 @@
 
 package androidx.test.espresso.base;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Throwables.throwIfUnchecked;
-
-import android.annotation.SuppressLint;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
-import android.view.KeyCharacterMap;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
+
+import androidx.test.espresso.GraphHolderWrapper;
 import androidx.test.espresso.IdlingPolicies;
 import androidx.test.espresso.IdlingPolicy;
-import androidx.test.espresso.InjectEventSecurityException;
-import androidx.test.espresso.UiController;
-import androidx.test.espresso.base.IdlingResourceRegistry.IdleNotificationCallback;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Iterables;
+import androidx.test.espresso.IdlingRegistry;
+
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
+import org.robolectric.android.internal.LocalUiController;
+import org.robolectric.shadows.ShadowLooper;
+
 import java.util.BitSet;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
-import javax.inject.Inject;
-import javax.inject.Provider;
-import javax.inject.Singleton;
 
-/** Implementation of {@link UiController}. */
-@Singleton
-final class IdlingLocalUiController
-        implements InterruptableUiController, Handler.Callback, IdlingUiController {
+import static androidx.test.espresso.base.IdlingResourceRegistry.IdleNotificationCallback;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
-    private static final String TAG = IdlingLocalUiController.class.getSimpleName();
+public class IdlingLocalUiController extends LocalUiController implements Handler.Callback {
+    private static final String TAG = "IdlingLocalUiController";
 
     private static final Callable<Void> NO_OP =
             new Callable<Void>() {
@@ -70,7 +64,9 @@ final class IdlingLocalUiController
                 }
             };
 
-    /** Responsible for signaling a particular condition is met / verifying that signal. */
+    /**
+     * Responsible for signaling a particular condition is met / verifying that signal.
+     */
     enum IdleCondition {
         DELAY_HAS_PAST,
         ASYNC_TASKS_HAVE_IDLED,
@@ -79,17 +75,24 @@ final class IdlingLocalUiController
         MOTION_INJECTION_HAS_COMPLETED,
         DYNAMIC_TASKS_HAVE_IDLED;
 
-        /** Checks whether this condition has been signaled. */
+
+        /**
+         * Checks whether this condition has been signaled.
+         */
         public boolean isSignaled(BitSet conditionSet) {
             return conditionSet.get(ordinal());
         }
 
-        /** Resets the signal state for this condition. */
+        /**
+         * Resets the signal state for this condition.
+         */
         public void reset(BitSet conditionSet) {
             conditionSet.set(ordinal(), false);
         }
 
-        /** Creates a message that when sent will raise the signal of this condition. */
+        /**
+         * Creates a message that when sent will raise the signal of this condition.
+         */
         public Message createSignal(Handler handler, int myGeneration) {
             return Message.obtain(handler, ordinal(), myGeneration, 0, null);
         }
@@ -133,289 +136,34 @@ final class IdlingLocalUiController
         }
     }
 
-    /** Represents the status of {@link MainThreadInterrogation} */
+    /**
+     * Represents the status of {@link MainThreadInterrogation}
+     */
     private enum InterrogationStatus {
         TIMED_OUT,
         COMPLETED,
         INTERRUPTED
     }
 
-    private final EventInjector eventInjector;
-    private final BitSet conditionSet;
-
-    private final ExecutorService keyEventExecutor =
-            Executors.newSingleThreadExecutor(
-                    new ThreadFactoryBuilder().setNameFormat("Espresso Key Event #%d").build());
-    private final Looper mainLooper;
-    private final IdlingResourceRegistry idlingResourceRegistry;
+    private final BitSet conditionSet = IdleCondition.createConditionSet();
 
     private Handler controllerHandler;
-    // only updated on main thread.
     private MainThreadInterrogation interrogation;
     private int generation = 0;
-    private IdleNotifier<Runnable> asyncIdle;
-    private IdleNotifier<Runnable> compatIdle;
-    private Provider<IdleNotifier<IdleNotificationCallback>> dynamicIdleProvider;
+    private final IdlingResourceRegistry dynamicRegistry;
 
-    @VisibleForTesting
-    @Inject
-    IdlingLocalUiController(
-            EventInjector eventInjector,
-            @SdkAsyncTask IdleNotifier<Runnable> asyncIdle,
-            @CompatAsyncTask IdleNotifier<Runnable> compatIdle,
-            Provider<IdleNotifier<IdleNotificationCallback>> dynamicIdle,
-            Looper mainLooper,
-            IdlingResourceRegistry idlingResourceRegistry) {
-        this.eventInjector = checkNotNull(eventInjector);
-        this.asyncIdle = checkNotNull(asyncIdle);
-        this.compatIdle = checkNotNull(compatIdle);
-        this.conditionSet = IdleCondition.createConditionSet();
-        this.dynamicIdleProvider = checkNotNull(dynamicIdle);
-        this.mainLooper = checkNotNull(mainLooper);
-        this.idlingResourceRegistry = checkNotNull(idlingResourceRegistry);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public boolean injectKeyEvent(final KeyEvent event) throws InjectEventSecurityException {
-        checkNotNull(event);
-        checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
-        initialize();
-        loopMainThreadUntilIdle();
-
-        FutureTask<Boolean> injectTask =
-                new SignalingTask<Boolean>(
-                        new Callable<Boolean>() {
-                            @Override
-                            public Boolean call() throws Exception {
-                                return eventInjector.injectKeyEvent(event);
-                            }
-                        },
-                        IdleCondition.KEY_INJECT_HAS_COMPLETED,
-                        generation);
-
-        // Inject the key event.
-        @SuppressWarnings("unused") // go/futurereturn-lsc
-                Future<?> possiblyIgnoredError = keyEventExecutor.submit(injectTask);
-
-        loopUntil(IdleCondition.KEY_INJECT_HAS_COMPLETED, dynamicIdleProvider.get());
-
-        try {
-            checkState(injectTask.isDone(), "Key injection was signaled - but it wasnt done.");
-            return injectTask.get();
-        } catch (ExecutionException ee) {
-            if (ee.getCause() instanceof InjectEventSecurityException) {
-                throw (InjectEventSecurityException) ee.getCause();
-            } else {
-                throw new RuntimeException(ee.getCause());
-            }
-        } catch (InterruptedException neverHappens) {
-            // we only call get() after done() is signaled.
-            // we should never block.
-            throw new RuntimeException("impossible.", neverHappens);
-        }
-    }
-
-    @Override
-    public boolean injectMotionEvent(final MotionEvent event) throws InjectEventSecurityException {
-        checkNotNull(event);
-        checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
-        initialize();
-        FutureTask<Boolean> injectTask =
-                new SignalingTask<Boolean>(
-                        new Callable<Boolean>() {
-                            @Override
-                            public Boolean call() throws Exception {
-                                return eventInjector.injectMotionEvent(event);
-                            }
-                        },
-                        IdleCondition.MOTION_INJECTION_HAS_COMPLETED,
-                        generation);
-        Future<?> possiblyIgnoredError = keyEventExecutor.submit(injectTask);
-        loopUntil(IdleCondition.MOTION_INJECTION_HAS_COMPLETED, dynamicIdleProvider.get());
-        try {
-            checkState(injectTask.isDone(), "Motion event injection was signaled - but it wasnt done.");
-            return injectTask.get();
-        } catch (ExecutionException ee) {
-            if (ee.getCause() instanceof InjectEventSecurityException) {
-                throw (InjectEventSecurityException) ee.getCause();
-            } else {
-                throwIfUnchecked(ee.getCause() != null ? ee.getCause() : ee);
-                throw new RuntimeException(ee.getCause() != null ? ee.getCause() : ee);
-            }
-        } catch (InterruptedException neverHappens) {
-            // we only call get() after done() is signaled.
-            // we should never block.
-            throw new RuntimeException(neverHappens);
-        } finally {
-            loopMainThreadUntilIdle();
-        }
-    }
-
-    @Override
-    public boolean injectMotionEventSequence(final Iterable<MotionEvent> events)
-            throws InjectEventSecurityException {
-        checkNotNull(events);
-        checkState(!Iterables.isEmpty(events), "Expecting non-empty events to inject");
-        checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
-        initialize();
-        final Iterator<MotionEvent> mei = events.iterator();
-        final long downTime = Iterables.getFirst(events, null).getEventTime();
-        final long shift = SystemClock.uptimeMillis() - downTime;
-        FutureTask<Boolean> injectTask =
-                new SignalingTask<>(
-                        new Callable<Boolean>() {
-                            @Override
-                            public Boolean call() throws Exception {
-                                boolean success = true;
-                                while (mei.hasNext()) {
-                                    MotionEvent me = mei.next();
-                                    long desiredTime = me.getEventTime() + shift;
-                                    long timeUntilDesired = desiredTime - SystemClock.uptimeMillis();
-                                    if (timeUntilDesired > 10) {
-                                        // This must NOT run in main thread, so it's fine to sleep
-                                        SystemClock.sleep(timeUntilDesired);
-                                    }
-                                    if (mei.hasNext()) {
-                                        success &= eventInjector.injectMotionEventAsync(me);
-                                    } else {
-                                        success &= eventInjector.injectMotionEvent(me);
-                                    }
-                                }
-                                return success;
-                            }
-                        },
-                        IdleCondition.MOTION_INJECTION_HAS_COMPLETED,
-                        generation);
-        Future<?> possiblyIgnoredError = keyEventExecutor.submit(injectTask);
-        loopUntil(IdleCondition.MOTION_INJECTION_HAS_COMPLETED, dynamicIdleProvider.get());
-        try {
-            checkState(injectTask.isDone(), "MotionEvents injection was signaled - but it wasnt done.");
-            return injectTask.get();
-        } catch (ExecutionException ee) {
-            if (ee.getCause() instanceof InjectEventSecurityException) {
-                throw (InjectEventSecurityException) ee.getCause();
-            } else {
-                throwIfUnchecked(ee.getCause() != null ? ee.getCause() : ee);
-                throw new RuntimeException(ee.getCause() != null ? ee.getCause() : ee);
-            }
-        } catch (InterruptedException neverHappens) {
-            // we only call get() after done() is signaled.
-            // we should never block.
-            throw new RuntimeException(neverHappens);
-        } finally {
-            loopMainThreadUntilIdle();
-        }
-    }
-
-    @Override
-    public boolean injectString(String str) throws InjectEventSecurityException {
-        checkNotNull(str);
-        checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
-        initialize();
-
-        // No-op if string is empty.
-        if (str.isEmpty()) {
-            Log.w(TAG, "Supplied string is empty resulting in no-op (nothing is typed).");
-            return true;
-        }
-
-        boolean eventInjected = false;
-        KeyCharacterMap keyCharacterMap = getKeyCharacterMap();
-
-        // TODO(b/80130875): Investigate why not use (as suggested in javadoc of
-        // keyCharacterMap.getEvents):
-        // http://developer.android.com/reference/android/view/KeyEvent.html#KeyEvent(long,
-        // java.lang.String, int, int)
-        KeyEvent[] events = keyCharacterMap.getEvents(str.toCharArray());
-        if (events == null) {
-            throw new RuntimeException(
-                    String.format(
-                            Locale.ROOT,
-                            "Failed to get key events for string %s (i.e. current IME does not understand how to"
-                                    + " translate the string into key events). As a workaround, you can use"
-                                    + " replaceText action to set the text directly in the EditText field.",
-                            str));
-        }
-
-        Log.d(TAG, String.format(Locale.ROOT, "Injecting string: \"%s\"", str));
-
-        for (KeyEvent event : events) {
-            checkNotNull(
-                    event,
-                    String.format(
-                            Locale.ROOT,
-                            "Failed to get event for character (%c) with key code (%s)",
-                            event.getKeyCode(),
-                            event.getUnicodeChar()));
-
-            eventInjected = false;
-            for (int attempts = 0; !eventInjected && attempts < 4; attempts++) {
-                // We have to change the time of an event before injecting it because
-                // all KeyEvents returned by KeyCharacterMap.getEvents() have the same
-                // time stamp and the system rejects too old events. Hence, it is
-                // possible for an event to become stale before it is injected if it
-                // takes too long to inject the preceding ones.
-                event = KeyEvent.changeTimeRepeat(event, SystemClock.uptimeMillis(), 0);
-                eventInjected = injectKeyEvent(event);
-            }
-
-            if (!eventInjected) {
-                Log.e(
-                        TAG,
-                        String.format(
-                                Locale.ROOT,
-                                "Failed to inject event for character (%c) with key code (%s)",
-                                event.getUnicodeChar(),
-                                event.getKeyCode()));
-                break;
-            }
-        }
-
-        return eventInjected;
-    }
-
-    @SuppressLint("InlinedApi")
-    @VisibleForTesting
-    @SuppressWarnings("deprecation")
-    public static KeyCharacterMap getKeyCharacterMap() {
-        KeyCharacterMap keyCharacterMap = null;
-
-        // KeyCharacterMap.VIRTUAL_KEYBOARD is present from API11.
-        // For earlier APIs we use KeyCharacterMap.BUILT_IN_KEYBOARD
-        if (Build.VERSION.SDK_INT < 11) {
-            keyCharacterMap = KeyCharacterMap.load(KeyCharacterMap.BUILT_IN_KEYBOARD);
-        } else {
-            keyCharacterMap = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD);
-        }
-        return keyCharacterMap;
-    }
-
-    @Override
-    public IdlingResourceRegistry getIdlingResourceRegistry() {
-        return idlingResourceRegistry;
+    public IdlingLocalUiController() {
+        dynamicRegistry = GraphHolderWrapper.baseLayer().idlingResourceRegistry();
     }
 
     @Override
     public void loopMainThreadUntilIdle() {
+        super.loopMainThreadUntilIdle();
         initialize();
-        checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
-        IdleNotifier<IdleNotificationCallback> dynamicIdle = dynamicIdleProvider.get();
+        checkState(Looper.myLooper() == Looper.getMainLooper(), "Expecting to be on main thread!");
+        IdleNotifier<IdleNotificationCallback> dynamicIdle = provideDynamicNotifier(dynamicRegistry);
         do {
             EnumSet<IdleCondition> condChecks = EnumSet.noneOf(IdleCondition.class);
-            if (!asyncIdle.isIdleNow()) {
-                asyncIdle.registerNotificationCallback(
-                        new SignalingTask<Void>(NO_OP, IdleCondition.ASYNC_TASKS_HAVE_IDLED, generation));
-
-                condChecks.add(IdleCondition.ASYNC_TASKS_HAVE_IDLED);
-            }
-
-            if (!compatIdle.isIdleNow()) {
-                compatIdle.registerNotificationCallback(
-                        new SignalingTask<Void>(NO_OP, IdleCondition.COMPAT_TASKS_HAVE_IDLED, generation));
-                condChecks.add(IdleCondition.COMPAT_TASKS_HAVE_IDLED);
-            }
-
             if (!dynamicIdle.isIdleNow()) {
                 final IdlingPolicy warning = IdlingPolicies.getDynamicIdlingResourceWarningPolicy();
                 final IdlingPolicy error = IdlingPolicies.getDynamicIdlingResourceErrorPolicy();
@@ -444,27 +192,28 @@ final class IdlingLocalUiController
 
             try {
                 dynamicIdle = loopUntil(condChecks, dynamicIdle);
+                ShadowLooper.shadowMainLooper().idle();
             } finally {
-                asyncIdle.cancelCallback();
-                compatIdle.cancelCallback();
                 dynamicIdle.cancelCallback();
             }
-        } while (!asyncIdle.isIdleNow() || !compatIdle.isIdleNow() || !dynamicIdle.isIdleNow());
+        } while (!dynamicIdle.isIdleNow());
     }
+
 
     @Override
     public void loopMainThreadForAtLeast(long millisDelay) {
         initialize();
-
-        checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
+        checkState(Looper.myLooper() == Looper.getMainLooper(), "Expecting to be on main thread!");
         checkState(!IdleCondition.DELAY_HAS_PAST.isSignaled(conditionSet), "recursion detected!");
         checkArgument(millisDelay > 0);
-
         controllerHandler.postAtTime(
                 new SignalingTask<>(NO_OP, IdleCondition.DELAY_HAS_PAST, generation),
                 generation,
                 SystemClock.uptimeMillis() + millisDelay);
-        loopUntil(IdleCondition.DELAY_HAS_PAST, dynamicIdleProvider.get());
+        // We advance the system clock by `millisDelay` and execute pending tasks before calling loopUntil().
+        super.loopMainThreadForAtLeast(millisDelay);
+        IdleNotifier<IdleNotificationCallback> dynamicIdle = provideDynamicNotifier(dynamicRegistry);
+        loopUntil(IdleCondition.DELAY_HAS_PAST, dynamicIdle);
         loopMainThreadUntilIdle();
     }
 
@@ -555,19 +304,14 @@ final class IdlingLocalUiController
         return dynamicIdle;
     }
 
-    @Override
-    public void interruptEspressoTasks() {
-        initialize();
-        controllerHandler.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        if (interrogation != null) {
-                            interrogation.interruptInterrogation();
-                            controllerHandler.removeCallbacksAndMessages(generation);
-                        }
-                    }
-                });
+    // copied from BaseLayerModule.java
+    private IdleNotifier<IdleNotificationCallback> provideDynamicNotifier(
+            IdlingResourceRegistry dynamicRegistry) {
+        // Since a dynamic notifier will be created for each Espresso interaction this is a good time
+        // to sync the IdlingRegistry with IdlingResourceRegistry.
+        dynamicRegistry.sync(
+                IdlingRegistry.getInstance().getResources(), IdlingRegistry.getInstance().getLoopers());
+        return dynamicRegistry.asIdleNotifier();
     }
 
     private static final class MainThreadInterrogation
@@ -689,4 +433,3 @@ final class IdlingLocalUiController
         }
     }
 }
-
