@@ -16,8 +16,10 @@
 
 package com.google.samples.apps.sunflower.data
 
+import androidx.annotation.VisibleForTesting
+
 class GardenPlantingRepository private constructor(
-    private val gardenPlantingDao: GardenPlantingDao
+    @VisibleForTesting internal var gardenPlantingDao: GardenPlantingDao
 ) {
 
     suspend fun createGardenPlanting(plantId: String) {
@@ -43,5 +45,9 @@ class GardenPlantingRepository private constructor(
                 instance ?: synchronized(this) {
                     instance ?: GardenPlantingRepository(gardenPlantingDao).also { instance = it }
                 }
+
+        fun updateDao(dao: GardenPlantingDao) {
+            instance?.gardenPlantingDao = dao
+        }
     }
 }

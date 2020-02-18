@@ -16,10 +16,14 @@
 
 package com.google.samples.apps.sunflower.data
 
+import androidx.annotation.VisibleForTesting
+
 /**
  * Repository module for handling data operations.
  */
-class PlantRepository private constructor(private val plantDao: PlantDao) {
+class PlantRepository private constructor(
+        @VisibleForTesting internal var plantDao: PlantDao
+) {
 
     fun getPlants() = plantDao.getPlants()
 
@@ -37,5 +41,10 @@ class PlantRepository private constructor(private val plantDao: PlantDao) {
                 instance ?: synchronized(this) {
                     instance ?: PlantRepository(plantDao).also { instance = it }
                 }
+
+        @VisibleForTesting(otherwise = VisibleForTesting.NONE)
+        fun updateDao(dao: PlantDao) {
+            instance?.plantDao = dao
+        }
     }
 }

@@ -10,6 +10,7 @@ import com.google.samples.apps.sunflower.childAtPosition
 import org.hamcrest.Matchers
 object PlantListPage {
     fun goMyGarden(): MyGardenPage {
+        println("***goMyGarden")
         val tabView = Espresso.onView(
                 Matchers.allOf(ViewMatchers.withContentDescription("My garden"),
                         childAtPosition(
@@ -23,6 +24,7 @@ object PlantListPage {
     }
 
     fun showPlantDetail(plantName: String): PlantDetailPage {
+        println("***showPlantDetail")
         Espresso.onView(ViewMatchers.withId(R.id.plant_list))
                 .perform(RecyclerViewActions.actionOnItem<PlantAdapter.PlantViewHolder>(ViewMatchers.hasDescendant(ViewMatchers.withText(plantName)), ViewActions.click()))
         return PlantDetailPage
