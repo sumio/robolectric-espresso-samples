@@ -17,6 +17,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.*
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit
 
@@ -32,17 +33,19 @@ class GardenActivityTest2 {
 
     private val dataBindingIdlingResource = DataBindingIdlingResource()
 
+    // resourceName of IdlingThreadPoolExecutor must be unique
+    private var idlingThreadPoolExecutor = IdlingThreadPoolExecutor("coroutine dispatcher id=${UUID.randomUUID()}",
+            2,
+            10,
+            0,
+            TimeUnit.MILLISECONDS,
+            LinkedBlockingDeque<Runnable>()
+    ) { Thread(it) }
+
     @Before
     fun setUp() {
         val idlingRegistry = IdlingRegistry.getInstance()
-        PlantDetailViewModel.overrideDispatcher = IdlingThreadPoolExecutor("coroutine dispatcher",
-                2,
-                10,
-                0,
-                TimeUnit.MILLISECONDS,
-                LinkedBlockingDeque<Runnable>(),
-                { Thread(it) }
-        ).asCoroutineDispatcher()
+        PlantDetailViewModel.overrideDispatcher = idlingThreadPoolExecutor.asCoroutineDispatcher()
         dataBindingIdlingResource.monitorActivity(activityScenarioRule.scenario)
         idlingRegistry.register(dataBindingIdlingResource)
     }
@@ -50,6 +53,9 @@ class GardenActivityTest2 {
     @After
     fun tearDown() {
         IdlingRegistry.getInstance().unregister(dataBindingIdlingResource)
+        // Shutdown IdlingThreadPoolExecutor in order to unregister it.
+        PlantDetailViewModel.overrideDispatcher = null
+        idlingThreadPoolExecutor.shutdown()
     }
 
     @Test
@@ -64,5 +70,16 @@ class GardenActivityTest2 {
                 .assertPlanted("Mango")
     }
 
+    @Test
+    fun gardenActivityTest_Eggplant() {
+        // page object implementation resides in `src/sharedTest/java`.
+        MyGardenPage
+                .goPlantList()
+                .showPlantDetail("Eggplant")
+                .addToMyGarden()
+                .goBackPlantList()
+                .goMyGarden()
+                .assertPlanted("Eggplant")
+    }
 }
 
