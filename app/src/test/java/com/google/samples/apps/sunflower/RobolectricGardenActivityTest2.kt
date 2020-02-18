@@ -68,5 +68,17 @@ class RobolectricGardenActivityTest2 {
                 .assertPlanted("Mango")
     }
 
+    @Test
+    fun gardenActivityTest_Eggplant() {
+        // page object implementation resides in `src/sharedTest/java`.
+        MyGardenPage
+                .goPlantList()
+                .showPlantDetail("Eggplant")
+                .addToMyGarden()
+                .goBackPlantList()
+                .goMyGarden()
+                .assertPlanted("Eggplant")
+    }
+
 }
 
