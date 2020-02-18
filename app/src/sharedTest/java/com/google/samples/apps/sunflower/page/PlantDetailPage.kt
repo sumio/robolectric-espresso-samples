@@ -9,6 +9,7 @@ import org.hamcrest.Matchers
 
 object PlantDetailPage {
     fun goBackPlantList(): PlantListPage {
+        println("***goBackPlantList")
         val appCompatImageButton = Espresso.onView(
                 Matchers.allOf(childAtPosition(
                         Matchers.allOf(ViewMatchers.withId(R.id.toolbar),
@@ -22,6 +23,7 @@ object PlantDetailPage {
     }
 
     fun addToMyGarden(): PlantDetailPage {
+        println("***addToMyGarden")
         val floatingActionButton = Espresso.onView(
                 Matchers.allOf(ViewMatchers.withId(R.id.fab),
                         childAtPosition(

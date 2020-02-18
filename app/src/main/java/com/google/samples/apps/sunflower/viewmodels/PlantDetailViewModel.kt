@@ -35,6 +35,7 @@ class PlantDetailViewModel(
 ) : ViewModel() {
 
     companion object {
+        @Volatile
         var overrideDispatcher: CoroutineDispatcher? = null
     }
 
