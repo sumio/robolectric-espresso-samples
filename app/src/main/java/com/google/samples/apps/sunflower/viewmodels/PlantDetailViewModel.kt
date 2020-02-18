@@ -21,6 +21,8 @@ import androidx.lifecycle.viewModelScope
 import com.google.samples.apps.sunflower.PlantDetailFragment
 import com.google.samples.apps.sunflower.data.GardenPlantingRepository
 import com.google.samples.apps.sunflower.data.PlantRepository
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
@@ -32,11 +34,19 @@ class PlantDetailViewModel(
     private val plantId: String
 ) : ViewModel() {
 
+    companion object {
+        var overrideDispatcher: CoroutineDispatcher? = null
+    }
+
     val isPlanted = gardenPlantingRepository.isPlanted(plantId)
     val plant = plantRepository.getPlant(plantId)
 
     fun addPlantToGarden() {
-        viewModelScope.launch {
+        val dispatcher = overrideDispatcher ?: Dispatchers.Default
+        viewModelScope.launch(dispatcher) {
+            // make background thread take a long time.
+            // This makes Espresso tests fail without help of idling resources.
+            Thread.sleep(3000L)
             gardenPlantingRepository.createGardenPlanting(plantId)
         }
     }
