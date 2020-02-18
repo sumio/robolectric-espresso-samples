@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
@@ -47,6 +46,9 @@ android {
     // work-runtime-ktx 2.1.0 and above now requires Java 8
     kotlinOptions {
         jvmTarget = "1.8"
+    }
+    testOptions {
+        unitTests.includeAndroidResources = true
     }
 }
 
@@ -83,5 +85,18 @@ dependencies {
     androidTestImplementation "androidx.test.uiautomator:uiautomator:$rootProject.uiAutomatorVersion"
     androidTestImplementation "androidx.work:work-testing:$rootProject.workVersion"
     androidTestImplementation "com.google.truth:truth:$rootProject.truthVersion"
+
+    implementation('androidx.fragment:fragment-testing:1.1.0'){
+        exclude group: 'androidx.test', module: 'core'
+    }
+
+    testImplementation "androidx.arch.core:core-testing:$rootProject.coreTestingVersion"
+    testImplementation "androidx.test.espresso:espresso-contrib:$rootProject.espressoVersion"
+    testImplementation "androidx.test.espresso:espresso-core:$rootProject.espressoVersion"
+    testImplementation "androidx.test.espresso:espresso-intents:$rootProject.espressoVersion"
+    testImplementation "androidx.test.ext:junit:$rootProject.testExtJunit"
+    testImplementation "androidx.work:work-testing:$rootProject.workVersion"
+    testImplementation "org.robolectric:robolectric:$rootProject.robolectricVersion"
+
     testImplementation "junit:junit:$rootProject.junitVersion"
 }
