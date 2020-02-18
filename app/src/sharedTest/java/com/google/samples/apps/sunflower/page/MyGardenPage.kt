@@ -12,6 +12,7 @@ import org.hamcrest.core.IsInstanceOf
 
 object MyGardenPage {
     fun assertPlanted(plantName: String): MyGardenPage {
+        println("***assertPlanted")
         val textView = Espresso.onView(
                 Matchers.allOf(ViewMatchers.withId(R.id.plant_name), ViewMatchers.withText(plantName),
                         childAtPosition(
@@ -25,6 +26,7 @@ object MyGardenPage {
     }
 
     fun goPlantList(): PlantListPage {
+        println("***goPlantList")
         val materialButton = Espresso.onView(
                 Matchers.allOf(ViewMatchers.withId(R.id.add_plant), ViewMatchers.withText("Add plant"),
                         childAtPosition(

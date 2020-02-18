@@ -1,6 +1,7 @@
 package com.google.samples.apps.sunflower
 
 
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.IdlingRegistry
 import androidx.test.espresso.idling.concurrent.IdlingThreadPoolExecutor
 import androidx.test.ext.junit.rules.activityScenarioRule
@@ -9,21 +10,27 @@ import androidx.test.filters.LargeTest
 import com.android.example.github.util.TaskExecutorWithIdlingResourceRule
 import com.example.android.architecture.blueprints.todoapp.util.DataBindingIdlingResource
 import com.example.android.architecture.blueprints.todoapp.util.monitorActivity
+import com.google.samples.apps.sunflower.data.AppDatabase
 import com.google.samples.apps.sunflower.page.MyGardenPage
 import com.google.samples.apps.sunflower.viewmodels.PlantDetailViewModel
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.asExecutor
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.LooperMode
 import java.util.*
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit
 
 @LargeTest
 @RunWith(AndroidJUnit4::class)
-class GardenActivityTest2 {
+@LooperMode(LooperMode.Mode.PAUSED)
+@Config(application = TestApplication::class)
+class RobolectricGardenActivityTest2 {
 
     @get:Rule
     val activityScenarioRule = activityScenarioRule<GardenActivity>()
@@ -53,6 +60,12 @@ class GardenActivityTest2 {
     @After
     fun tearDown() {
         IdlingRegistry.getInstance().unregister(dataBindingIdlingResource)
+        val appDatabase = AppDatabase.getInstance(ApplicationProvider.getApplicationContext())
+        appDatabase.close()
+        // We must clear the singleton instance of AppDatabase
+        // because the database file is removed before next test.
+        AppDatabase.clear()
+
         // Shutdown IdlingThreadPoolExecutor in order to unregister it.
         PlantDetailViewModel.overrideDispatcher = null
         idlingThreadPoolExecutor.shutdown()
@@ -81,5 +94,6 @@ class GardenActivityTest2 {
                 .goMyGarden()
                 .assertPlanted("Eggplant")
     }
+
 }
 
