@@ -29,6 +29,7 @@ android {
         minSdkVersion rootProject.minSdkVersion
         targetSdkVersion rootProject.targetSdkVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments clearPackageData: 'true'
         versionCode 1
         versionName "0.1.6"
         vectorDrawables.useSupportLibrary true
@@ -39,6 +40,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    sourceSets {
+        androidTest {
+            java.srcDirs += file('src/sharedTest/java')
+        }
+        test {
+            java.srcDirs += file('src/sharedTest/java')
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -49,6 +59,7 @@ android {
     }
     testOptions {
         unitTests.includeAndroidResources = true
+        execution 'ANDROIDX_TEST_ORCHESTRATOR'
     }
 }
 
@@ -76,25 +87,28 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$rootProject.coroutinesVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$rootProject.coroutinesVersion"
 
+    // for fragment scenario
+    implementation "androidx.fragment:fragment-testing:$rootProject.fragmentVersion"
+
     // Testing dependencies
     androidTestImplementation "androidx.arch.core:core-testing:$rootProject.coreTestingVersion"
     androidTestImplementation "androidx.test.espresso:espresso-contrib:$rootProject.espressoVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$rootProject.espressoVersion"
     androidTestImplementation "androidx.test.espresso:espresso-intents:$rootProject.espressoVersion"
-    androidTestImplementation "androidx.test.ext:junit:$rootProject.testExtJunit"
+    androidTestImplementation "androidx.test.ext:junit-ktx:$rootProject.testExtJunit"
     androidTestImplementation "androidx.test.uiautomator:uiautomator:$rootProject.uiAutomatorVersion"
     androidTestImplementation "androidx.work:work-testing:$rootProject.workVersion"
     androidTestImplementation "com.google.truth:truth:$rootProject.truthVersion"
+    androidTestImplementation "androidx.test:core-ktx:$rootProject.testCoreVersion"
 
-    implementation('androidx.fragment:fragment-testing:1.1.0'){
-        exclude group: 'androidx.test', module: 'core'
-    }
+    androidTestUtil "androidx.test:orchestrator:$rootProject.testCoreVersion"
 
     testImplementation "androidx.arch.core:core-testing:$rootProject.coreTestingVersion"
+    testImplementation "androidx.test:core-ktx:$rootProject.testCoreVersion"
     testImplementation "androidx.test.espresso:espresso-contrib:$rootProject.espressoVersion"
     testImplementation "androidx.test.espresso:espresso-core:$rootProject.espressoVersion"
     testImplementation "androidx.test.espresso:espresso-intents:$rootProject.espressoVersion"
-    testImplementation "androidx.test.ext:junit:$rootProject.testExtJunit"
+    testImplementation "androidx.test.ext:junit-ktx:$rootProject.testExtJunit"
     testImplementation "androidx.work:work-testing:$rootProject.workVersion"
     testImplementation "org.robolectric:robolectric:$rootProject.robolectricVersion"
 
