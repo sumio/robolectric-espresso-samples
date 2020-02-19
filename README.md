@@ -1,4 +1,4 @@
-# Robolectric UI Test Samples by using Espresso Idling Resource
+# Robolectric UI Test Samples by Using Espresso Idling Resource
 
 [DroidKaigi 2020](https://droidkaigi.jp/2020/) で発表する予定だった「[Robolectricの限界を理解してUIテストを高速に実行しよう](https://droidkaigi.jp/2020/timetable/156794)」のサンプルコードです。
 
@@ -29,20 +29,20 @@ Android Sunflower付属の、オリジナルのREADMEは[README.orig.md](README.
 ## テストコードの概要
 
 Espresso Test Recorderで記録したテスト(一部改変あり)を、
-Instrumented TestとRobolectricを使ったLocal Testの両方動作するようにしています。
+`Instrumented Test`・`Robolectricを使ったLocal Test`の両方で動作するようにしています。
 テストの内容は次の通りで、`Mango`を選ぶものと`Eggplant`を選ぶものの2つのケースが存在しています。
 
-1. `Add Plant`を押してPlant List画面に遷移する
-2. リストされている植物からを1つ選んで、FABを押す
-3. My Garden画面に戻って、追加した植物が表示されていることを確認する。
+1. `Add Plant`を押して`Plant List`画面に遷移する
+2. リストされている植物からを1つ選んで、FABを押して追加する
+3. `My Garden`画面に戻って、追加した植物が表示されていることを確認する。
 
 テストのエントリーポイントは次の通りです。
 
-- Instrumented Test: `src/androidTest/java/com/google/samples/apps/sunflower/GardenActivityTest2.kt`
-- Local Test: `src/test/java/com/google/samples/apps/sunflower/RobolectricGardenActivityTest2.kt`
+- Instrumented Test: [`src/androidTest/java/com/google/samples/apps/sunflower/GardenActivityTest2.kt`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/androidTest/java/com/google/samples/apps/sunflower/GardenActivityTest2.kt)
+- Local Test: [`src/test/java/com/google/samples/apps/sunflower/RobolectricGardenActivityTest2.kt`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/com/google/samples/apps/sunflower/RobolectricGardenActivityTest2.kt)
 
 実際にEspressoのAPIを使って画面を操作している部分はPage Object化し、両方のテストから参照できる  
-`src/sharedTest/java/com/google/samples/apps/sunflower/{page,util}/`  
+[`src/sharedTest/java/com/google/samples/apps/sunflower/`](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/src/sharedTest/java/com/google/samples/apps/sunflower)`{page,util}/`  
 配下に配置しています。
 
 
@@ -66,9 +66,9 @@ class RobolectricGardenActivityTest2 {
 Robolectricで動かす場合、デフォルトのinitializerでは動作しません。
 そのため、[デフォルトのinitializerを削除](https://developer.android.com/topic/libraries/architecture/workmanager/advanced/custom-configuration#remove-default)し、[`WorkManagerTestInitHelper`](https://developer.android.com/reference/kotlin/androidx/work/testing/WorkManagerTestInitHelper.html)を使って初期化しています。
 
-デフォルトのinitializerを削除している箇所は`src/test/AndroidManifest.xml`です。
+デフォルトのinitializerを削除している箇所は[`src/test/AndroidManifest.xml`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/AndroidManifest.xml)です。
 
-初期化コードは、テスト専用のアプリケーションクラス`TestApplication`を定義し、その`onCreate()`の中で実行しています。
+初期化コードは、テスト専用のアプリケーションクラス[`TestApplication`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/com/google/samples/apps/sunflower/TestApplication.kt)を定義し、その`onCreate()`の中で実行しています。
 Robolectricでは、テスト専用のアプリケーションクラスを次のように指定することができます。
 
 ```kotlin
@@ -82,27 +82,27 @@ class RobolectricGardenActivityTest2 {
 
 Robolectric現バージョンでは、EspressoのIdling Resourceに[対応していません](https://github.com/robolectric/robolectric/issues/4807)。そのため、このサンプルでは独自実装によってRobolectricでIdling Resourceを待ち合わせるようにしてあります。
 
-EspressoがIdling Resourceがアイドル状態になるのを待ち合わせている箇所は`UiController`インターフェイスを実装した[`UiControllerImpl`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/UiControllerImpl.java)です。
+EspressoでIdling Resourceがアイドル状態になるのを待ち合わせている箇所は`UiController`インターフェイスを実装した[`UiControllerImpl`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/UiControllerImpl.java)です。
 
 一方で、Robolectricが提供している`UiController`インターフェイスの実装は[`LocalUiController`](https://github.com/robolectric/robolectric/blob/robolectric-4.3.1/robolectric/src/main/java/org/robolectric/android/internal/LocalUiController.java)で、こちらにはIdling Resourceを待ち合わせているコードがありません。
 
-そのため、`LocalUiController`を拡張した[`IdlingLocalUiController`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/IdlingLocalUiController.java)を実装し、RobolectricもIdling Resourceを待ち合わせるようにしました。
+そのため、`LocalUiController`を拡張した[`IdlingLocalUiController`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/IdlingLocalUiController.java)を実装し、RobolectricでもIdling Resourceを待ち合わせるようにしました。
 
-具体的には、Espressoの`UiControllerImpl`のなかで、Idling Resourceを待ち合わせているロジックだけを`IdlingLocalUiController`に移植しています。その差分は[このコミット](https://github.com/sumio/robolectric-espresso-samples/pull/2/commits/40f8e1cf044d61ac0078f0f89c79e96af7339c76)を参照してください。
+具体的には、Espressoの`UiControllerImpl`のうち、Idling Resourceを待ち合わせているロジックだけを`IdlingLocalUiController`に移植しています。その差分は[このコミット](https://github.com/sumio/robolectric-espresso-samples/pull/2/commits/40f8e1cf044d61ac0078f0f89c79e96af7339c76)を参照してください。
 
 なお、Robolectricが提供する`UiController`インターフェイスの実装は、JARファイルの
-`META-INF/services/androidx.test.platform.ui.UiController`にハードコードされているため、RobolectricのJARファイルにも手を加えざるを得ませんでした。
+[`META-INF/services/androidx.test.platform.ui.UiController`](https://github.com/robolectric/robolectric/blob/robolectric-4.3.1/robolectric/src/main/resources/META-INF/services/androidx.test.platform.ui.UiController)にハードコードされているため、RobolectricのJARファイルにも手を加えざるを得ませんでした。
 
 手を加えたRobolectricは[`app/local-repo`ディレクトリ配下に](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/local-repo/org/robolectric/robolectric/4.3.1-modified)に格納しています。
 オリジナルとの差分は`META-INF/services/androidx.test.platform.ui.UiController`を削除した点のみです。  
 (後日、Robolectric本家にPRできればと考えています)
 
-この対応のための修正は、 #2 にまとまっていますので、興味のある方は参考にしてみてください。
+この対応のための修正は、 [#2](https://github.com/sumio/robolectric-espresso-samples/pull/2) にまとまっていますので、興味のある方は参考にしてみてください。
 
 #### Idling Resource対応についての注意事項
 
 - この対応は限られたケースで動作確認したに過ぎません。その点ご理解の上お試しください。
-- `IdlingRegistry.registerLooperAsIdlingResource()`を使ったケースは未確認です。恐らく対応できていないと思います。
+- [`IdlingRegistry.registerLooperAsIdlingResource()`](https://developer.android.com/reference/androidx/test/espresso/IdlingRegistry.html?hl=en#registerLooperAsIdlingResource%28android.os.Looper%29)を使ったケースは未確認です。恐らく対応できていないと思います。
 
 ### Room対応
 
@@ -120,7 +120,7 @@ Robolectricでは、ユニットテスト時のテスト独立性を高めるた
   - ビルドした`RoomDatabase`のインスタンス
   - DAOのインスタンス
 
-具体的な修正内容は #3 のうち、以下の箇所を参照してください。
+具体的な修正内容は [#3](https://github.com/sumio/robolectric-espresso-samples/pull/3) のうち、以下の箇所を参照してください。
 
 - `AppDatabase.kt`
 - `GardenPlantingRepository.kt`
@@ -149,8 +149,8 @@ Licensed under the
 
 - Select text used for describing the plants (in `plants.json`) are used from Wikipedia via CC BY-SA 3.0 US (license in `ASSETS_LICENSE`).
 - "[seed](https://thenounproject.com/search/?q=seed&i=1585971)" by [Aisyah](https://thenounproject.com/aisyahalmasyira/) is licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/us/legalcode)
-- [`robolectric-4.3.1-modified.jar`](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/local-repo/org/robolectric/robolectric/4.3.1-modified) is modified version of [Robolectric 4.3.1](https://github.com/robolectric/robolectric/releases/tag/robolectric-4.3.1) licensed under the Apache License, Version 2.0.
-- [`IdlingLocalUiController.java`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/IdlingLocalUiController.java) is modified version of [`UiControllerImpl.java`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/UiControllerImpl.java) licensed under the Apache License, Version 2.0.
-- [`PausedLooperInterrogator.java`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/PausedLooperInterrogator.java) are modified version of [`Interrogator.java`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/Interrogator.java) licensed under the Apache License, Version 2.0.
+- [`robolectric-4.3.1-modified.jar`](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/local-repo/org/robolectric/robolectric/4.3.1-modified) is a modified version of [Robolectric 4.3.1](https://github.com/robolectric/robolectric/releases/tag/robolectric-4.3.1) licensed under the Apache License, Version 2.0.
+- [`IdlingLocalUiController.java`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/IdlingLocalUiController.java) is a modified version of [`UiControllerImpl.java`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/UiControllerImpl.java) licensed under the Apache License, Version 2.0.
+- [`PausedLooperInterrogator.java`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/PausedLooperInterrogator.java) is a modified version of [`Interrogator.java`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/Interrogator.java) licensed under the Apache License, Version 2.0.
 - [`TaskExecutorWithIdlingResourceRule.kt`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/sharedTest/java/com/android/example/github/util/TaskExecutorWithIdlingResourceRule.kt) is copied from [GithubBrowserSample](https://github.com/android/architecture-components-samples/blob/1d7a759f742e8bdaf1eb4531e38ea9270301c577/GithubBrowserSample/app/src/androidTest/java/com/android/example/github/util/TaskExecutorWithIdlingResourceRule.kt) licensed under the Apache License, Version 2.0.
 - [`DataBindingIdlingResource.kt`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/sharedTest/java/com/example/android/architecture/blueprints/todoapp/util/DataBindingIdlingResource.kt) is copied from [Android Architecture Blueprints v2](https://github.com/android/architecture-samples/blob/b9518b1c20affeea9fb8f0b75d153659519c5f58/app/src/sharedTest/java/com/example/android/architecture/blueprints/todoapp/util/DataBindingIdlingResource.kt) licensed under the Apache License, Version 2.0.
