@@ -5,7 +5,7 @@
 本リポジトリは、
 GoogleがAndroid Jetpackのサンプルアプリとして開発している[Android Sunflower](https://github.com/googlesamples/android-sunflower)に、Robolectricで動作するEspressoで書かれたテストコードを追加したものです。
 
-Android Sunflower付属の、オリジナルのREADMEは[README.orig.md](README.orig.md)を参照してください。
+Android Sunflower付属のオリジナルのREADMEは、[README.orig.md](README.orig.md)を参照してください。
 
 ## 動作確認環境
 
@@ -80,20 +80,20 @@ class RobolectricGardenActivityTest2 {
 
 ### Idling Resource対応
 
-Robolectric現バージョンでは、EspressoのIdling Resourceに[対応していません](https://github.com/robolectric/robolectric/issues/4807)。そのため、このサンプルでは独自実装によってRobolectricでIdling Resourceを待ち合わせるようにしてあります。
+Robolectricの現バージョンでは、EspressoのIdling Resourceに[対応していません](https://github.com/robolectric/robolectric/issues/4807)。そのため、このサンプルでは独自実装によってRobolectricでIdling Resourceを待ち合わせるようにしてあります。
 
 EspressoでIdling Resourceがアイドル状態になるのを待ち合わせている箇所は`UiController`インターフェイスを実装した[`UiControllerImpl`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/UiControllerImpl.java)です。
 
 一方で、Robolectricが提供している`UiController`インターフェイスの実装は[`LocalUiController`](https://github.com/robolectric/robolectric/blob/robolectric-4.3.1/robolectric/src/main/java/org/robolectric/android/internal/LocalUiController.java)で、こちらにはIdling Resourceを待ち合わせているコードがありません。
 
-そのため、`LocalUiController`を拡張した[`IdlingLocalUiController`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/IdlingLocalUiController.java)を実装し、RobolectricでもIdling Resourceを待ち合わせるようにしました。
+そこで`LocalUiController`を拡張した[`IdlingLocalUiController`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/IdlingLocalUiController.java)を実装し、RobolectricでもIdling Resourceを待ち合わせるようにしました。
 
 具体的には、Espressoの`UiControllerImpl`のうち、Idling Resourceを待ち合わせているロジックだけを`IdlingLocalUiController`に移植しています。その差分は[このコミット](https://github.com/sumio/robolectric-espresso-samples/pull/2/commits/40f8e1cf044d61ac0078f0f89c79e96af7339c76)を参照してください。
 
 なお、Robolectricが提供する`UiController`インターフェイスの実装は、JARファイルの
 [`META-INF/services/androidx.test.platform.ui.UiController`](https://github.com/robolectric/robolectric/blob/robolectric-4.3.1/robolectric/src/main/resources/META-INF/services/androidx.test.platform.ui.UiController)にハードコードされているため、RobolectricのJARファイルにも手を加えざるを得ませんでした。
 
-手を加えたRobolectricは[`app/local-repo`ディレクトリ配下に](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/local-repo/org/robolectric/robolectric/4.3.1-modified)に格納しています。
+手を加えたRobolectricは[`app/local-repo`ディレクトリ配下](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/local-repo/org/robolectric/robolectric/4.3.1-modified)に格納しています。
 オリジナルとの差分は`META-INF/services/androidx.test.platform.ui.UiController`を削除した点のみです。  
 (後日、Robolectric本家にPRできればと考えています)
 
@@ -106,10 +106,9 @@ EspressoでIdling Resourceがアイドル状態になるのを待ち合わせて
 
 ### Room対応
 
-Robolectricでは、ユニットテスト時のテスト独立性を高めるために、
-テスト終了時にデータベースファイルを削除する仕様となっています。
+Robolectricでは、テスト独立性を高めるために、テスト終了時にデータベースファイルを削除する仕様となっています。
 
-そのため、テストをまたがって、ビルドした`RoomDatabase`のインスタンスを保持する設計になっている場合、
+そのため、ビルドした`RoomDatabase`のインスタンスを、テストをまたがって保持する設計になっている場合、
 2回目のテストからは存在しないデータベースファイルを参照することになり、データベースアクセスが正しく動作しません。
 
 次のようにすることで、このRobolectricの仕様に対応することができます。
