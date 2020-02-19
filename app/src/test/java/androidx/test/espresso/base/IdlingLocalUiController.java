@@ -39,6 +39,7 @@ import androidx.test.espresso.IdlingRegistry;
 import com.google.common.collect.Lists;
 
 import org.robolectric.android.internal.LocalUiController;
+import org.robolectric.annotation.LooperMode;
 import org.robolectric.shadows.ShadowLooper;
 
 import java.util.BitSet;
@@ -159,6 +160,10 @@ public class IdlingLocalUiController extends LocalUiController implements Handle
     @Override
     public void loopMainThreadUntilIdle() {
         super.loopMainThreadUntilIdle();
+        if (!isPausedLooperMode()) {
+            // supported only PAUSED looper mode.
+            return;
+        }
         initialize();
         checkState(Looper.myLooper() == Looper.getMainLooper(), "Expecting to be on main thread!");
         IdleNotifier<IdleNotificationCallback> dynamicIdle = provideDynamicNotifier(dynamicRegistry);
@@ -202,6 +207,11 @@ public class IdlingLocalUiController extends LocalUiController implements Handle
 
     @Override
     public void loopMainThreadForAtLeast(long millisDelay) {
+        if (!isPausedLooperMode()) {
+            // supported only PAUSED looper mode.
+            super.loopMainThreadForAtLeast(millisDelay);
+            return;
+        }
         initialize();
         checkState(Looper.myLooper() == Looper.getMainLooper(), "Expecting to be on main thread!");
         checkState(!IdleCondition.DELAY_HAS_PAST.isSignaled(conditionSet), "recursion detected!");
@@ -230,6 +240,10 @@ public class IdlingLocalUiController extends LocalUiController implements Handle
     private void loopUntil(
             IdleCondition condition, IdleNotifier<IdleNotificationCallback> dynamicIdle) {
         loopUntil(EnumSet.of(condition), dynamicIdle);
+    }
+
+    private boolean isPausedLooperMode() {
+        return ShadowLooper.looperMode() == LooperMode.Mode.PAUSED;
     }
 
     /**
