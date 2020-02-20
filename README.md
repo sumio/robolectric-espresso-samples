@@ -1,174 +1,155 @@
-Android Sunflower (alpha)
-=========================
-[![CircleCI](https://circleci.com/gh/android/sunflower/tree/master.svg?style=shield)](https://circleci.com/gh/android/sunflower/tree/master)
+# Robolectric UI Test Samples by Using Espresso Idling Resource
 
-A gardening app illustrating Android development best practices with Android Jetpack.
+[DroidKaigi 2020](https://droidkaigi.jp/2020/) で発表する予定だった「[Robolectricの限界を理解してUIテストを高速に実行しよう](https://droidkaigi.jp/2020/timetable/156794)」のサンプルコードです。
 
-Android Sunflower is currently under heavy development.
-Note that some changes (such as database schema modifications) are not backwards
-compatible during this alpha period and may cause the app to crash. In this
-case, please uninstall and re-install the app.
+本リポジトリは、
+GoogleがAndroid Jetpackのサンプルアプリとして開発している[Android Sunflower](https://github.com/googlesamples/android-sunflower)に、Robolectricで動作するEspressoで書かれたテストコードを追加したものです。
 
-Introduction
-------------
+Android Sunflower付属のオリジナルのREADMEは、[README.orig.md](README.orig.md)を参照してください。
 
-Android Jetpack is a set of components, tools and guidance to make great Android apps. They bring
-together the existing Support Library and Architecture Components and arrange them into four
-categories:
+## 動作確認環境
 
-![Android Jetpack](screenshots/jetpack_donut.png "Android Jetpack Components")
+- Android Studio 3.5.3
 
-Android Sunflower demonstrates utilizing these components to create a simple gardening app.
-Read the
-[Introducing Android Sunflower](https://medium.com/androiddevelopers/introducing-android-sunflower-e421b43fe0c2)
-article for a walkthrough of the app.
+## オリジナルのAndroid Sunflowerとの違い
 
-Getting Started
----------------
-This project uses the Gradle build system. To build this project, use the
-`gradlew build` command or use "Import Project" in Android Studio.
+- ライブラリの依存関係を最新化しています。
+  それに伴い、最新のライブラリでビルドできるように`PlantDetailFragment.kt`と`MaskedCardView.kt`を修正しています。
+- オリジナルのREADME.mdのファイル名をREADME.orig.mdにリネームしています。
+- Espressoで書いたUIテストを`src/androidTest`と`src/test`の両方に追加しています。
+- Instrumented TestからもLocal Testからも参照できる`src/sharedTest`ディレクトリを追加しています。
+- 植物が庭に追加されるときに、わざとバックグラウンドスレッドで3秒スリープするように変更しています。
+  また、そのときに実行されるスレッドをテストコードから変更できるようにしています。  
+  (`PlantDetailViewModel.kt`)
+- 一度保持した`AppDatabase`インスタンスを、テストコードから破棄できるようにしています。  
+  (`AppDatabase.kt`)
+- 一度保持したDAOインスタンスを、テストコードから差し替えられるようにしています。
+  (`GardenPlantingRepository.kt`と`PlantRepository.kt`)
 
-There are two Gradle tasks for testing the project:
-* `connectedAndroidTest` - for running Espresso on a connected device
-* `test` - for running unit tests
+## テストコードの概要
 
-For more resources on learning Android development, visit the
-[Developer Guides](https://developer.android.com/guide/) at
-[developer.android.com](https://developer.android.com).
+Espresso Test Recorderで記録したテスト(一部改変あり)を、
+`Instrumented Test`・`Robolectricを使ったLocal Test`の両方で動作するようにしています。
+テストの内容は次の通りで、`Mango`を選ぶものと`Eggplant`を選ぶものの2つのケースが存在しています。
 
-Screenshots
------------
+1. `Add Plant`を押して`Plant List`画面に遷移する
+2. リストされている植物からを1つ選んで、FABを押して追加する
+3. `My Garden`画面に戻って、追加した植物が表示されていることを確認する。
 
-![List of plants](screenshots/phone_plant_list.png "A list of plants")
-![Plant details](screenshots/phone_plant_detail.png "Details for a specific plant")
-![My Garden](screenshots/phone_my_garden.png "Plants that have been added to your garden")
+テストのエントリーポイントは次の通りです。
 
-Libraries Used
---------------
-* [Foundation][0] - Components for core system capabilities, Kotlin extensions and support for
-  multidex and automated testing.
-  * [AppCompat][1] - Degrade gracefully on older versions of Android.
-  * [Android KTX][2] - Write more concise, idiomatic Kotlin code.
-  * [Test][4] - An Android testing framework for unit and runtime UI tests.
-* [Architecture][10] - A collection of libraries that help you design robust, testable, and
-  maintainable apps. Start with classes for managing your UI component lifecycle and handling data
-  persistence.
-  * [Data Binding][11] - Declaratively bind observable data to UI elements.
-  * [Lifecycles][12] - Create a UI that automatically responds to lifecycle events.
-  * [LiveData][13] - Build data objects that notify views when the underlying database changes.
-  * [Navigation][14] - Handle everything needed for in-app navigation.
-  * [Room][16] - Access your app's SQLite database with in-app objects and compile-time checks.
-  * [ViewModel][17] - Store UI-related data that isn't destroyed on app rotations. Easily schedule
-     asynchronous tasks for optimal execution.
-  * [WorkManager][18] - Manage your Android background jobs.
-* [UI][30] - Details on why and how to use UI Components in your apps - together or separate
-  * [Animations & Transitions][31] - Move widgets and transition between screens.
-  * [Fragment][34] - A basic unit of composable UI.
-  * [Layout][35] - Lay out widgets using different algorithms.
-* Third party
-  * [Glide][90] for image loading
-  * [Kotlin Coroutines][91] for managing background threads with simplified code and reducing needs for callbacks
+- Instrumented Test: [`src/androidTest/java/com/google/samples/apps/sunflower/GardenActivityTest2.kt`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/androidTest/java/com/google/samples/apps/sunflower/GardenActivityTest2.kt)
+- Local Test: [`src/test/java/com/google/samples/apps/sunflower/RobolectricGardenActivityTest2.kt`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/com/google/samples/apps/sunflower/RobolectricGardenActivityTest2.kt)
 
-[0]: https://developer.android.com/jetpack/components
-[1]: https://developer.android.com/topic/libraries/support-library/packages#v7-appcompat
-[2]: https://developer.android.com/kotlin/ktx
-[4]: https://developer.android.com/training/testing/
-[10]: https://developer.android.com/jetpack/arch/
-[11]: https://developer.android.com/topic/libraries/data-binding/
-[12]: https://developer.android.com/topic/libraries/architecture/lifecycle
-[13]: https://developer.android.com/topic/libraries/architecture/livedata
-[14]: https://developer.android.com/topic/libraries/architecture/navigation/
-[16]: https://developer.android.com/topic/libraries/architecture/room
-[17]: https://developer.android.com/topic/libraries/architecture/viewmodel
-[18]: https://developer.android.com/topic/libraries/architecture/workmanager
-[30]: https://developer.android.com/guide/topics/ui
-[31]: https://developer.android.com/training/animation/
-[34]: https://developer.android.com/guide/components/fragments
-[35]: https://developer.android.com/guide/topics/ui/declaring-layout
-[90]: https://bumptech.github.io/glide/
-[91]: https://kotlinlang.org/docs/reference/coroutines-overview.html
+実際にEspressoのAPIを使って画面を操作している部分はPage Object化し、両方のテストから参照できる  
+[`src/sharedTest/java/com/google/samples/apps/sunflower/`](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/src/sharedTest/java/com/google/samples/apps/sunflower)`{page,util}/`  
+配下に配置しています。
 
-Upcoming features
------------------
-Updates will include incorporating additional Jetpack components and updating existing components
-as the component libraries evolve.
 
-Interested in seeing a particular feature of the Android Framework or Jetpack implemented in this
-app? Please open a new [issue](https://github.com/android/sunflower/issues).
+## Robolectric対応のポイント
 
-Android Studio IDE setup
-------------------------
-For development, the latest version of Android Studio is required. The latest version can be
-downloaded from [here](https://developer.android.com/studio/).
+### RobolectricのLooper Mode
 
-Sunflower uses [ktlint](https://ktlint.github.io/) to enforce Kotlin coding styles.
-Here's how to configure it for use with Android Studio (instructions adapted
-from the ktlint [README](https://github.com/shyiko/ktlint/blob/master/README.md)):
+Robolectric 4.3から導入された`PAUSED` Looper Modeにしています。
+Looper Modeについての詳細は[Improving Robolectric's Looper simulation](http://robolectric.org/blog/2019/06/04/paused-looper/)を参照してください。
 
-- Close Android Studio if it's open
+```kotlin
+@RunWith(AndroidJUnit4::class)
+@LooperMode(LooperMode.Mode.PAUSED)
+class RobolectricGardenActivityTest2 {
+    ...
+}
+```
 
-- Download ktlint using these [installation instructions](https://github.com/shyiko/ktlint/blob/master/README.md#installation)
+### WorkManager対応
 
-- Inside the project root directory run:
+Robolectricで動かす場合、デフォルトのinitializerでは動作しません。
+そのため、[デフォルトのinitializerを削除](https://developer.android.com/topic/libraries/architecture/workmanager/advanced/custom-configuration#remove-default)し、[`WorkManagerTestInitHelper`](https://developer.android.com/reference/kotlin/androidx/work/testing/WorkManagerTestInitHelper.html)を使って初期化しています。
 
-  `./ktlint --apply-to-idea-project --android`
+デフォルトのinitializerを削除している箇所は[`src/test/AndroidManifest.xml`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/AndroidManifest.xml)です。
 
-- Start Android Studio
+初期化コードは、テスト専用のアプリケーションクラス[`TestApplication`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/com/google/samples/apps/sunflower/TestApplication.kt)を定義し、その`onCreate()`の中で実行しています。
+Robolectricでは、テスト専用のアプリケーションクラスを次のように指定することができます。
 
-Additional resources
---------------------
-Check out these Wiki pages to learn more about Android Sunflower:
+```kotlin
+@Config(application = TestApplication::class)
+class RobolectricGardenActivityTest2 {
+    ...
+}    
+```
 
-- [Notable Community Contributions](https://github.com/android/sunflower/wiki/Notable-Community-Contributions)
+### Idling Resource対応
 
-- [Publications](https://github.com/android/sunflower/wiki/Sunflower-Publications)
+Robolectricの現バージョンでは、EspressoのIdling Resourceに[対応していません](https://github.com/robolectric/robolectric/issues/4807)。そのため、このサンプルでは独自実装によってRobolectricでIdling Resourceを待ち合わせるようにしてあります。
 
-Non-Goals
----------
-The focus of this project is on Android Jetpack and the Android framework.
-Thus, there are no immediate plans to implement features outside of this scope.
+EspressoでIdling Resourceがアイドル状態になるのを待ち合わせている箇所は`UiController`インターフェイスを実装した[`UiControllerImpl`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/UiControllerImpl.java)です。
 
-A note on dependency injection - while many projects (such as
-[Plaid](https://github.com/nickbutcher/plaid)) use
-[Dagger 2](https://github.com/google/dagger) for DI, there are no plans to
-incorporate DI into Sunflower.  This allows developers unfamiliar with dependency
-injection to better understand Sunflower's code without having to learn DI.
+一方で、Robolectricが提供している`UiController`インターフェイスの実装は[`LocalUiController`](https://github.com/robolectric/robolectric/blob/robolectric-4.3.1/robolectric/src/main/java/org/robolectric/android/internal/LocalUiController.java)で、こちらにはIdling Resourceを待ち合わせているコードがありません。
 
-Support
--------
+そこで`LocalUiController`を拡張した[`IdlingLocalUiController`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/IdlingLocalUiController.java)を実装し、RobolectricでもIdling Resourceを待ち合わせるようにしました。
 
-- Stack Overflow:
-  - http://stackoverflow.com/questions/tagged/android
-  - http://stackoverflow.com/questions/tagged/android-jetpack
+具体的には、Espressoの`UiControllerImpl`のうち、Idling Resourceを待ち合わせているロジックだけを`IdlingLocalUiController`に移植しています。その差分は[このコミット](https://github.com/sumio/robolectric-espresso-samples/pull/2/commits/40f8e1cf044d61ac0078f0f89c79e96af7339c76)を参照してください。
 
-If you've found an error in this sample, please file an issue:
-https://github.com/android/sunflower/issues
+なお、Robolectricが提供する`UiController`インターフェイスの実装は、JARファイルの
+[`META-INF/services/androidx.test.platform.ui.UiController`](https://github.com/robolectric/robolectric/blob/robolectric-4.3.1/robolectric/src/main/resources/META-INF/services/androidx.test.platform.ui.UiController)にハードコードされているため、RobolectricのJARファイルにも手を加えざるを得ませんでした。
 
-Patches are encouraged, and may be submitted by forking this project and submitting a pull request
-through GitHub.
+手を加えたRobolectricは[`app/local-repo`ディレクトリ配下](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/local-repo/org/robolectric/robolectric/4.3.1-modified)に格納しています。
+オリジナルとの差分は`META-INF/services/androidx.test.platform.ui.UiController`を削除した点のみです。  
+(後日、Robolectric本家にPRできればと考えています)
 
-Third Party Content
--------------------
-Select text used for describing the plants (in `plants.json`) are used from Wikipedia via CC BY-SA 3.0 US (license in `ASSETS_LICENSE`).
+この対応のための修正は、 [#2](https://github.com/sumio/robolectric-espresso-samples/pull/2) にまとまっていますので、興味のある方は参考にしてみてください。
 
-"[seed](https://thenounproject.com/search/?q=seed&i=1585971)" by [Aisyah](https://thenounproject.com/aisyahalmasyira/) is licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/us/legalcode)
+#### Idling Resource対応についての注意事項
 
-License
--------
+- この対応は限られたケースで動作確認したに過ぎません。その点ご理解の上お試しください。
+- [`IdlingRegistry.registerLooperAsIdlingResource()`](https://developer.android.com/reference/androidx/test/espresso/IdlingRegistry.html?hl=en#registerLooperAsIdlingResource%28android.os.Looper%29)を使ったケースは未確認です。恐らく対応できていないと思います。
 
-Copyright 2018 Google, Inc.
+### Room対応
 
-Licensed to the Apache Software Foundation (ASF) under one or more contributor
-license agreements.  See the NOTICE file distributed with this work for
-additional information regarding copyright ownership.  The ASF licenses this
-file to you under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License.  You may obtain a copy of
-the License at
+Robolectricでは、テスト独立性を高めるために、テスト終了時にデータベースファイルを削除する仕様となっています。
 
-  http://www.apache.org/licenses/LICENSE-2.0
+そのため、ビルドした`RoomDatabase`のインスタンスを、テストをまたがって保持する設計になっている場合、
+2回目のテストからは存在しないデータベースファイルを参照することになり、データベースアクセスが正しく動作しません。
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
-License for the specific language governing permissions and limitations under
-the License.
+次のようにすることで、このRobolectricの仕様に対応することができます。
+この対応にはアプリ側にも手を入れざるを得ないケースが多いと思います。
+
+- Robolectric用に用意した`Application`クラスで、毎回`RoomDatabase`をビルドするようにします。
+- アプリケーション内で以下の参照を保持し続ける実装になっている場合は、`RoomDatabase`をビルドしたタイミングで、新しい参照に更新するようにします。
+  - ビルドした`RoomDatabase`のインスタンス
+  - DAOのインスタンス
+
+具体的な修正内容は [#3](https://github.com/sumio/robolectric-espresso-samples/pull/3) のうち、以下の箇所を参照してください。
+
+- `AppDatabase.kt`
+- `GardenPlantingRepository.kt`
+- `PlantRepository.kt`
+- `RobolectricGardenActivityTest2.kt`の`tearDown()`で`appDatabase`の`close()`・`clear()`を呼び出している箇所
+
+### Robolectricで動作しない機能について
+
+次の機能は、Robolectricでは動作しないことが確認できています。
+ここに挙げた機能を使った部分については、Robolectricによるテストを避けた方が無難です。
+
+- [Navigation Drawer](https://material.io/components/navigation-drawer/)内のメニュー操作
+- [Paging Library](https://developer.android.com/topic/libraries/architecture/paging)を使っているRecyclerViewの操作
+- Espressoの[`DrawerActions`](https://developer.android.com/reference/androidx/test/espresso/contrib/DrawerActions?hl=en) API
+
+## ライセンス
+
+Original Copyright 2018 Google, Inc. See [README.orig.md](README.orig.md) for details.
+
+Modifications Copyright 2020 TOYAMA Sumio &lt;jun.nama@gmail.com&gt;  
+
+Licensed under the
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+### Third Party Content
+
+- Select text used for describing the plants (in `plants.json`) are used from Wikipedia via CC BY-SA 3.0 US (license in `ASSETS_LICENSE`).
+- "[seed](https://thenounproject.com/search/?q=seed&i=1585971)" by [Aisyah](https://thenounproject.com/aisyahalmasyira/) is licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/us/legalcode)
+- [`robolectric-4.3.1-modified.jar`](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/local-repo/org/robolectric/robolectric/4.3.1-modified) is a modified version of [Robolectric 4.3.1](https://github.com/robolectric/robolectric/releases/tag/robolectric-4.3.1) licensed under the Apache License, Version 2.0.
+- [`IdlingLocalUiController.java`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/IdlingLocalUiController.java) is a modified version of [`UiControllerImpl.java`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/UiControllerImpl.java) licensed under the Apache License, Version 2.0.
+- [`PausedLooperInterrogator.java`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/test/java/androidx/test/espresso/base/PausedLooperInterrogator.java) is a modified version of [`Interrogator.java`](https://github.com/android/android-test/blob/androidx-test-1.2.0/espresso/core/java/androidx/test/espresso/base/Interrogator.java) licensed under the Apache License, Version 2.0.
+- [`TaskExecutorWithIdlingResourceRule.kt`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/sharedTest/java/com/android/example/github/util/TaskExecutorWithIdlingResourceRule.kt) is copied from [GithubBrowserSample](https://github.com/android/architecture-components-samples/blob/1d7a759f742e8bdaf1eb4531e38ea9270301c577/GithubBrowserSample/app/src/androidTest/java/com/android/example/github/util/TaskExecutorWithIdlingResourceRule.kt) licensed under the Apache License, Version 2.0.
+- [`DataBindingIdlingResource.kt`](https://github.com/sumio/robolectric-espresso-samples/blob/master/app/src/sharedTest/java/com/example/android/architecture/blueprints/todoapp/util/DataBindingIdlingResource.kt) is copied from [Android Architecture Blueprints v2](https://github.com/android/architecture-samples/blob/b9518b1c20affeea9fb8f0b75d153659519c5f58/app/src/sharedTest/java/com/example/android/architecture/blueprints/todoapp/util/DataBindingIdlingResource.kt) licensed under the Apache License, Version 2.0.
