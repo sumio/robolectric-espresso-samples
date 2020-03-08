@@ -14,7 +14,7 @@ class TestApplication : Application() {
         super.onCreate()
         // uncomment below to print logcat
         // ShadowLog.stream = System.out
-        WorkManagerTestInitHelper.initializeTestWorkManager(this, Configuration.Builder().build())
+        WorkManagerTestInitHelper.initializeTestWorkManager(this)
 
         // We must get AppDatabase instance again
         // because Robolectric creates database files whenever test is started.
