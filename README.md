@@ -5,6 +5,10 @@
 本リポジトリは、
 GoogleがAndroid Jetpackのサンプルアプリとして開発している[Android Sunflower](https://github.com/googlesamples/android-sunflower)に、Robolectricで動作するEspressoで書かれたテストコードを追加したものです。
 
+あわせて、本リポジトリには、[EspressoのIdlingResource](https://developer.android.com/training/testing/espresso/idling-resource)をサポートするように改造したRobolectricが含まれています。
+IdlingResource対応のRobolectricを試してみたい方は、
+後述の「[IdlingResource対応のRobolectricを試してみるには](#robolectric-idlingresource)」を参照してください。
+
 Android Sunflower付属のオリジナルのREADMEは、[README.orig.md](README.orig.md)を参照してください。
 
 ## 動作確認環境
@@ -45,6 +49,46 @@ Espresso Test Recorderで記録したテスト(一部改変あり)を、
 [`src/sharedTest/java/com/google/samples/apps/sunflower/`](https://github.com/sumio/robolectric-espresso-samples/tree/master/app/src/sharedTest/java/com/google/samples/apps/sunflower)`{page,util}/`  
 配下に配置しています。
 
+## <a id="robolectric-idlingresource"></a> IdlingResource対応のRobolectricを試してみるには
+
+本リポジトリには、[EspressoのIdlingResource](https://developer.android.com/training/testing/espresso/idling-resource)をサポートするように改造したRobolectricが含まれています。
+ご自身のプロジェクトに、IdlingResource対応のRobolectricを適用するには、次の手順にしたがってください。
+
+### ファイルのコピー
+
+次のディレクトリを、本リポジトリから、適用したいプロジェクトにコピーしてください。
+コピー先も同じディレクトリ構成にしてください。
+
+- `app/local-repo`
+- `app/src/test/resources`
+- `app/src/test/java/androidx`
+
+### build.gradleファイルの編集
+
+1. `app/local-repo`を、mavenのリポジトリ参照先として追加してください  
+   
+   ```groovy
+   // app/build.gradleに追記する場合
+   repositories {
+       maven { url = file('local-repo') }
+   }
+   ```
+2. 依存関係に宣言されているRobolectricのバージョン表記を`4.3.1-modified`にしてください  
+   
+   ```groovy
+   dependencies {
+       ...
+       testImplementation "org.robolectric:robolectric:4.3.1-modified"
+       ...
+   }
+   ```
+
+以上で、IdlingResourceに対応したRobolectricが使えるようになります。
+
+### <a id="notice-idlingresource"></a> Idling Resource対応についての注意事項
+
+- この対応は限られたケースで動作確認したに過ぎません。その点ご理解の上お試しください。
+- [`IdlingRegistry.registerLooperAsIdlingResource()`](https://developer.android.com/reference/androidx/test/espresso/IdlingRegistry.html?hl=en#registerLooperAsIdlingResource%28android.os.Looper%29)を使ったケースは未確認です。恐らく対応できていないと思います。
 
 ## Robolectric対応のポイント
 
@@ -99,10 +143,10 @@ EspressoでIdling Resourceがアイドル状態になるのを待ち合わせて
 
 この対応のための修正は、 [#2](https://github.com/sumio/robolectric-espresso-samples/pull/2) にまとまっていますので、興味のある方は参考にしてみてください。
 
-#### Idling Resource対応についての注意事項
+#### 注意事項
 
-- この対応は限られたケースで動作確認したに過ぎません。その点ご理解の上お試しください。
-- [`IdlingRegistry.registerLooperAsIdlingResource()`](https://developer.android.com/reference/androidx/test/espresso/IdlingRegistry.html?hl=en#registerLooperAsIdlingResource%28android.os.Looper%29)を使ったケースは未確認です。恐らく対応できていないと思います。
+このIdlingResource対応は限られたケースで動作確認したに過ぎません。
+前述の「[Idling Resource対応についての注意事項](#notice-idlingresource)」をご理解の上お試しください。
 
 ### Room対応
 
