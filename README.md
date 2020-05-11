@@ -20,6 +20,7 @@ Android Sunflower付属のオリジナルのREADMEは、[README.orig.md](README.
 - ライブラリの依存関係を最新化しています。
   それに伴い、最新のライブラリでビルドできるように`PlantDetailFragment.kt`と`MaskedCardView.kt`を修正しています。
 - オリジナルのREADME.mdのファイル名をREADME.orig.mdにリネームしています。
+- 既存のテストを削除しています。
 - Espressoで書いたUIテストを`src/androidTest`と`src/test`の両方に追加しています。
 - Instrumented TestからもLocal Testからも参照できる`src/sharedTest`ディレクトリを追加しています。
 - 植物が庭に追加されるときに、わざとバックグラウンドスレッドで3秒スリープするように変更しています。
