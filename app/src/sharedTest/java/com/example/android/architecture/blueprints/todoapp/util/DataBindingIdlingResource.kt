@@ -1,9 +1,11 @@
 /*
- * This file is copied from
+ * This file is based on
  * https://github.com/android/architecture-samples/blob/b9518b1c20affeea9fb8f0b75d153659519c5f58/app/src/sharedTest/java/com/example/android/architecture/blueprints/todoapp/util/DataBindingIdlingResource.kt
+ * and
+ * https://github.com/android/architecture-components-samples/blob/1d7a759f742e8bdaf1eb4531e38ea9270301c577/GithubBrowserSample/app/src/androidTest/java/com/android/example/github/util/DataBindingIdlingResource.kt
  * licensed under the Apache License, Version 2.0.
  *
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2018-2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +23,8 @@
 package com.example.android.architecture.blueprints.todoapp.util
 
 import android.view.View
+import android.view.ViewGroup
+import androidx.core.view.children
 import androidx.databinding.DataBindingUtil
 import androidx.databinding.ViewDataBinding
 import androidx.fragment.app.Fragment
@@ -82,18 +86,20 @@ class DataBindingIdlingResource : IdlingResource {
                 ?.supportFragmentManager
                 ?.fragments
 
-        val bindings =
-                fragments?.mapNotNull {
-                    it.view?.getBinding()
-                } ?: emptyList()
-        val childrenBindings = fragments?.flatMap { it.childFragmentManager.fragments }
-                ?.mapNotNull { it.view?.getBinding() } ?: emptyList()
+        val bindings = fragments?.mapNotNull {
+            it.view?.flattenHierarchy()?.mapNotNull { view ->
+                DataBindingUtil.getBinding<ViewDataBinding>(view)
+            }
+        }?.flatten()
+        return bindings ?: emptyList()
+    }
 
-        return bindings + childrenBindings
+    private fun View.flattenHierarchy(): List<View> = if (this is ViewGroup) {
+        listOf(this) + children.map { it.flattenHierarchy() }.flatten()
+    } else {
+        listOf(this)
     }
 }
-
-private fun View.getBinding(): ViewDataBinding? = DataBindingUtil.getBinding(this)
 
 /**
  * Sets the activity from an [ActivityScenario] to be used from [DataBindingIdlingResource].
